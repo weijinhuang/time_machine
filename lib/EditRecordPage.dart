@@ -17,6 +17,8 @@ class _EditRecordState extends State<EditRecordPage> {
   // Value that is shown in the date picker in time mode.
   DateTime time = DateTime.now();
 
+  void onFinish() {}
+
   @override
   Widget build(BuildContext context) {
     // TODO: implement build
@@ -24,14 +26,16 @@ class _EditRecordState extends State<EditRecordPage> {
       appBar: AppBar(
         title: Text("编辑时光记录"),
         actions: <Widget>[
-          Container(
-            width: 60,
-            child: Center(
-                child: RaisedButton(
-                  textColor: Colors.white,
-                  color: Colors.blue,
-                  child: Text('完成'),
-                )),
+          GestureDetector(
+            onTap: onFinish,
+            child: Container(
+              width: 60,
+              child: Center(
+                  child: Text(
+                '完成',
+                style: TextStyle(fontSize: 18),
+              )),
+            ),
           )
         ],
       ),
