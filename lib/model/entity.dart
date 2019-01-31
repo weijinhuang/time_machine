@@ -1,12 +1,12 @@
 class RecordEntity {
   RecordEntity(
-      {this.id, this.comment, this.startTime, this.endTime, this.image,this.isBlank,this.hasSelectTime});
+      {this.id, this.comment, this.startDateTime, this.endDateTime, this.image,this.isBlank,this.hasSelectTime});
 
-  double id;
-  String comment;
-  bool hasSelectTime;
-  int startTime;
-  int endTime;
+  int id = 0;
+  String comment='';
+  bool hasSelectTime = false;
+  int startDateTime = -1;
+  int endDateTime = -1;
   String image;
-  bool isBlank;
+  bool isBlank = false;
 }

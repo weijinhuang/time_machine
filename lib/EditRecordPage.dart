@@ -1,33 +1,117 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:intl/intl.dart';
+import 'model/entity.dart';
 
 const double _kPickerSheetHeight = 216.0;
 const double _kPickerItemHeight = 32.0;
 
 class EditRecordPage extends StatefulWidget {
+  EditRecordPage({this.data});
+
+  final RecordEntity data;
+
   @override
-  State<StatefulWidget> createState() => _EditRecordState();
+  State<StatefulWidget> createState() => _EditRecordState(data);
 }
 
 class _EditRecordState extends State<EditRecordPage> {
-  // Value that is shown in the date picker in date mode.
-  DateTime date = DateTime.now();
+  DateTime startDate;
 
-  // Value that is shown in the date picker in time mode.
-  DateTime time = DateTime.now();
+  DateTime startTime;
+  DateTime endDate;
 
-  void onFinish() {}
+  DateTime endTime;
+  RecordEntity data;
+  String inputText;
+
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+
+  _EditRecordState(RecordEntity data) {
+    this.data = data;
+    if (null != data) {
+      startDate = DateTime.fromMillisecondsSinceEpoch(data.startDateTime);
+      startTime = DateTime.fromMillisecondsSinceEpoch(data.startDateTime);
+      if (data.endDateTime != null && data.endDateTime > 0) {
+        endDate = DateTime.fromMillisecondsSinceEpoch(data.endDateTime);
+        endTime = DateTime.fromMillisecondsSinceEpoch(data.endDateTime);
+      }
+    }
+  }
+
+  void _onFinish(BuildContext context) {
+    FormState formState = _formKey.currentState;
+    if (null == startDate || !formState.validate()) {
+      String tips;
+      if (null == startDate) {
+        tips = "请选择开始日期";
+      }
+      if (!formState.validate()) {
+        tips = "请填写备注";
+      }
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) => CupertinoAlertDialog(
+              title: Text(tips),
+              actions: <Widget>[
+                CupertinoDialogAction(
+                  child: const Text('确定'),
+                  isDestructiveAction: true,
+                  onPressed: () {
+                    Navigator.pop(context, '确定');
+                  },
+                ),
+              ],
+            ),
+      );
+    } else {
+      formState.save();
+      if (null == data) {
+        data = RecordEntity();
+        data.id = DateTime.now().millisecondsSinceEpoch;
+      }
+      if (startTime == null) {
+        data.hasSelectTime = false;
+        data.startDateTime = startDate.millisecondsSinceEpoch;
+      } else {
+        data.hasSelectTime = true;
+        data.startDateTime = DateTime(startDate.year, startDate.month,
+                startDate.day, startTime.hour, startTime.minute)
+            .millisecondsSinceEpoch;
+      }
+      if (endDate != null) {
+        if (endTime == null) {
+          data.hasSelectTime = false;
+          data.endDateTime = endDate.millisecondsSinceEpoch;
+        } else {
+          data.hasSelectTime = true;
+          data.endDateTime = DateTime(endDate.year, endDate.month, endDate.day,
+                  endTime.hour, endTime.minute)
+              .millisecondsSinceEpoch;
+        }
+      }
+      data.comment = inputText;
+      data.isBlank = false;
+      Navigator.pop(context, data);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    // TODO: implement build
+    if (null != data && null != data.comment) {
+      inputText = data.comment;
+    } else {
+      inputText = '';
+    }
     return Scaffold(
       appBar: AppBar(
         title: Text("编辑时光记录"),
         actions: <Widget>[
           GestureDetector(
-            onTap: onFinish,
+            onTap: () {
+              _onFinish(context);
+            },
             child: Container(
               width: 60,
               child: Center(
@@ -39,20 +123,57 @@ class _EditRecordState extends State<EditRecordPage> {
           )
         ],
       ),
-      body: Column(
+      body: ListView(
         children: <Widget>[
-          const Padding(padding: EdgeInsets.only(top: 12.0)),
-          _buildDatePicker(context),
-          _buildTimePicker(context),
+          Container(
+            color: Color(0xEEEEEEEE),
+            height: 10,
+          ),
+          _buildStartTimePicker(
+              context, "开始日期", CupertinoDatePickerMode.date, startDate,
+              (selectDateTime) {
+            setState(() => startDate = selectDateTime);
+          }, '请选择开始日期'),
+          _buildStartTimePicker(
+              context, "开始时间", CupertinoDatePickerMode.time, startTime,
+              (selectDateTime) {
+            setState(() => startTime = selectDateTime);
+          }, '(可选)如不选择，则只计算天数'),
+          Container(
+            color: Color(0xEEEEEEEE),
+            height: 10,
+          ),
+          _buildStartTimePicker(
+              context, "结束日期", CupertinoDatePickerMode.date, endDate,
+              (selectDateTime) {
+            setState(() => endDate = selectDateTime);
+          }, '(可选)请选择结束日期'),
+          _buildStartTimePicker(
+              context, "结束时间", CupertinoDatePickerMode.time, endTime,
+              (selectDateTime) {
+            setState(() => endTime = selectDateTime);
+          }, '(可选)请选择结束时间'),
           Container(
             margin: EdgeInsets.only(left: 10, top: 20, right: 10, bottom: 20),
-            child: TextFormField(
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                hintText: '这一天发生了什么',
-                labelText: '备注',
+            child: Form(
+              key: _formKey,
+              child: TextFormField(
+                initialValue: inputText,
+                autovalidate: true,
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  helperText: '这一天发生了什么',
+                  labelText: '备注',
+                ),
+                maxLines: 3,
+                onSaved: (saved) => inputText = saved,
+                validator: (str) {
+                  if (str.isEmpty) {
+                    return '请填写备注';
+                  }
+                  return null;
+                },
               ),
-              maxLines: 3,
             ),
           ),
         ],
@@ -60,7 +181,24 @@ class _EditRecordState extends State<EditRecordPage> {
     );
   }
 
-  Widget _buildTimePicker(BuildContext context) {
+  Widget _buildStartTimePicker(
+      BuildContext context,
+      String title,
+      CupertinoDatePickerMode mode,
+      DateTime initialDateTime,
+      Function onDateTimeChange,
+      String nullTimeDes) {
+    String des;
+    if (null == initialDateTime) {
+      des = nullTimeDes;
+      initialDateTime = DateTime.now();
+    } else {
+      if (mode == CupertinoDatePickerMode.date) {
+        des = DateFormat("yyyy-MM-dd").format(initialDateTime);
+      } else {
+        des = DateFormat.Hm().format(initialDateTime);
+      }
+    }
     return GestureDetector(
       onTap: () {
         showCupertinoModalPopup<void>(
@@ -68,11 +206,11 @@ class _EditRecordState extends State<EditRecordPage> {
           builder: (BuildContext context) {
             return _buildBottomPicker(
               CupertinoDatePicker(
-                mode: CupertinoDatePickerMode.time,
-                initialDateTime: time,
+                mode: mode,
+                initialDateTime: initialDateTime,
                 use24hFormat: true,
                 onDateTimeChanged: (DateTime newDateTime) {
-                  setState(() => time = newDateTime);
+                  onDateTimeChange(newDateTime);
                 },
               ),
             );
@@ -81,41 +219,13 @@ class _EditRecordState extends State<EditRecordPage> {
       },
       child: _buildMenu(
         <Widget>[
-          const Text('Time'),
+          Text(title),
           Text(
-            DateFormat.Hm().format(time),
+            des,
             style: const TextStyle(color: CupertinoColors.inactiveGray),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildDatePicker(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        showCupertinoModalPopup<void>(
-          context: context,
-          builder: (BuildContext context) {
-            return _buildBottomPicker(
-              CupertinoDatePicker(
-                mode: CupertinoDatePickerMode.date,
-                initialDateTime: date,
-                onDateTimeChanged: (DateTime newDateTime) {
-                  setState(() => date = newDateTime);
-                },
-              ),
-            );
-          },
-        );
-      },
-      child: _buildMenu(<Widget>[
-        const Text('日期'),
-        Text(
-          DateFormat("yyyy-MM-dd").format(date),
-          style: const TextStyle(color: CupertinoColors.inactiveGray),
-        ),
-      ]),
     );
   }
 
@@ -146,7 +256,6 @@ class _EditRecordState extends State<EditRecordPage> {
       decoration: const BoxDecoration(
         color: CupertinoColors.white,
         border: Border(
-          top: BorderSide(color: Color(0xFFBCBBC1), width: 0.0),
           bottom: BorderSide(color: Color(0xFFBCBBC1), width: 0.0),
         ),
       ),
