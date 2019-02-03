@@ -31,10 +31,14 @@ class _EditRecordState extends State<EditRecordPage> {
     this.data = data;
     if (null != data) {
       startDate = DateTime.fromMillisecondsSinceEpoch(data.startDateTime);
-      startTime = DateTime.fromMillisecondsSinceEpoch(data.startDateTime);
+      if (data.hasSelectTime) {
+        startTime = DateTime.fromMillisecondsSinceEpoch(data.startDateTime);
+      }
       if (data.endDateTime != null && data.endDateTime > 0) {
         endDate = DateTime.fromMillisecondsSinceEpoch(data.endDateTime);
-        endTime = DateTime.fromMillisecondsSinceEpoch(data.endDateTime);
+        if (data.hasSelectTime) {
+          endTime = DateTime.fromMillisecondsSinceEpoch(data.endDateTime);
+        }
       }
     }
   }
@@ -69,7 +73,6 @@ class _EditRecordState extends State<EditRecordPage> {
       formState.save();
       if (null == data) {
         data = RecordEntity();
-        data.id = DateTime.now().millisecondsSinceEpoch;
       }
       if (startTime == null) {
         data.hasSelectTime = false;
@@ -126,7 +129,7 @@ class _EditRecordState extends State<EditRecordPage> {
       body: ListView(
         children: <Widget>[
           Container(
-            color: Color(0xEEEEEEEE),
+            color: Color(0x00000000),
             height: 10,
           ),
           _buildStartTimePicker(

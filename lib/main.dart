@@ -45,10 +45,50 @@ class MyHomePage extends StatefulWidget {
   final String title;
 
   @override
-  _MyHomePageState createState() => _MyHomePageState();
+  _MyHomePageState createState() {
+    return _MyHomePageState();
+  }
 }
 
 class _MyHomePageState extends State<MyHomePage> {
+  List<RecordEntity> datas = List();
+
+  _MyHomePageState() {
+//    getMyHomePageState();
+  }
+
+  getMyHomePageState() {
+//    var recordEntityProvider = RecordEntityProvider();
+//    recordEntityProvider.open();
+//    recordEntityProvider.getAll().then((results) {
+//      setState(() {
+//        datas = results;
+//        datas.add(RecordEntity(isBlank: true));
+//      });
+//    });
+//    recordEntityProvider.close();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    RecordEntityProvider().open().then((db) {
+      db.getAll().then((data) {
+        setState(() {
+          datas.addAll(data);
+        });
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+    RecordEntityProvider().open().then((db) {
+      db.close();
+    });
+  }
+
   void _toEditPage({RecordEntity data}) async {
     RecordEntity result = await Navigator.push(
         context,
@@ -58,32 +98,23 @@ class _MyHomePageState extends State<MyHomePage> {
                 )));
     if (null != result) {
       for (RecordEntity e in datas) {
-        if (e.id == result.id) {
+        if (e.recordId == result.recordId) {
           setState(() {
-
+            RecordEntityProvider().open().then((db) {
+              db.update(result);
+            });
           });
           return;
         }
       }
       setState(() {
-        datas.insert(datas.length-1,result);
+        datas.add(result);
+        RecordEntityProvider().open().then((db) {
+          db.insert(result);
+        });
       });
-
     }
   }
-
-  var datas = List.generate(
-      1,
-      (i) => RecordEntity(
-            id: i,
-            startDateTime: DateTime.now().millisecondsSinceEpoch + 86400000 * i,
-            endDateTime: i % 3 == 0
-                ? DateTime.now().millisecondsSinceEpoch + 864000000
-                : -1,
-            isBlank: i == 9 ? true : false,
-            hasSelectTime: i % 3 == 0 ? false : true,
-            comment: "comment:$i",
-          ));
 
   @override
   Widget build(BuildContext context) {
@@ -92,6 +123,7 @@ class _MyHomePageState extends State<MyHomePage> {
         title: Text(widget.title),
       ),
       body: Container(
+        color: Colors.transparent,
         child: ListView.builder(
           itemBuilder: (context, index) {
             var data = datas[index];
@@ -183,43 +215,60 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Widget _getCommonItem(RecordEntity data) {
-    String preStr = '';
-    int nowTime = DateTime.now().millisecondsSinceEpoch;
-    int recordTime = data.startDateTime;
-    if (nowTime < recordTime) {
-      preStr = '还有';
-    } else {
-      preStr = '已过去';
-    }
-    double timeInSeconds = (nowTime - recordTime).abs() / 1000;
-    int day = (timeInSeconds / 86400).round();
-    var countDateStr = '';
-    if (data.hasSelectTime) {
-      int hour = ((timeInSeconds % 86400) / 3600).round();
-      countDateStr = '$day天$hour小时';
-    } else {
-      countDateStr = '$day天';
-    }
+//    String preStr = '';
+//    int nowTime = DateTime.now().millisecondsSinceEpoch;
+//    int recordTime = data.startDateTime;
+//    if (nowTime < recordTime) {
+//      preStr = '还有';
+//    } else {
+//      preStr = '已过去';
+//    }
+//    double timeInSeconds = (nowTime - recordTime).abs() / 1000;
+//    int day = (timeInSeconds / 86400).round();
+//    var countDateStr = '';
+//    if (data.hasSelectTime) {
+//      int hour = ((timeInSeconds % 86400) / 3600).round();
+//      countDateStr = '$day天$hour小时';
+//    } else {
+//      countDateStr = '$day天';
+//    }
 
     return GestureDetector(
       onTap: () {
         _toEditPage(data: data);
       },
-      onLongPress: (){
-        showDialog(context: context,builder: (BuildContext context) => CupertinoAlertDialog(actions: <Widget>[
-          CupertinoDialogAction(
-            child: const Text('删除此条目'),
-            onPressed: () {
-              Navigator.pop(context, '删除此条目');
-              setState(() {
-                datas.remove(data);
-              });
-            },
-          ),
-        ],));
+      onLongPress: () {
+        showDialog(
+            context: context,
+            builder: (BuildContext context) => CupertinoAlertDialog(
+                  title: const Text("是否删除此项目"),
+                  content: Text(data.comment),
+                  actions: <Widget>[
+                    CupertinoDialogAction(
+                      child: const Text('删除'),
+                      onPressed: () {
+                        setState(() {
+                          Navigator.pop(context, '已删除');
+                          datas.remove(data);
+                          RecordEntityProvider().open().then((db) {
+                            db.delete(data.recordId);
+                          });
+                        });
+                      },
+                    ),
+                    CupertinoDialogAction(
+                      child: const Text('取消'),
+                      onPressed: () {
+                        Navigator.pop(context, '');
+                      },
+                    ),
+                  ],
+                ));
       },
-      child: Padding(
-        padding: const EdgeInsets.only(left: 10, top: 10, right: 10),
+      child: Card(
+        margin: EdgeInsets.only(left: 10, top: 10, right: 10),
+        
+        elevation: 10,
         child: Row(
           //行0
           children: <Widget>[
