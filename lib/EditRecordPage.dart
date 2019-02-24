@@ -1,15 +1,18 @@
-import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+
+import 'main.dart';
 import 'model/entity.dart';
 
 const double _kPickerSheetHeight = 216.0;
 const double _kPickerItemHeight = 32.0;
 
 class EditRecordPage extends StatefulWidget {
-  EditRecordPage({this.data});
+  EditRecordPage({this.data, this.recordType = TIME_RECORD});
 
   final RecordEntity data;
+  final String recordType;
 
   @override
   State<StatefulWidget> createState() => _EditRecordState(data);

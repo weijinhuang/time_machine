@@ -1,10 +1,13 @@
-import 'package:flutter/material.dart';
-import 'package:sqflite/sqflite.dart';
-import 'model/entity.dart';
-import 'package:time_machine/EditRecordPage.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
+import 'package:time_machine/EditRecordPage.dart';
+
+import 'model/entity.dart';
 
 void main() => runApp(MyApp());
+
+const TIME_RECORD = "time_record";
+const TIME_JOURNEY = 'time_journey';
 
 class MyApp extends StatelessWidget {
   static const int _greyPrimaryValue = 0xFF333333;
@@ -53,22 +56,6 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   List<RecordEntity> datas = List();
 
-  _MyHomePageState() {
-//    getMyHomePageState();
-  }
-
-  getMyHomePageState() {
-//    var recordEntityProvider = RecordEntityProvider();
-//    recordEntityProvider.open();
-//    recordEntityProvider.getAll().then((results) {
-//      setState(() {
-//        datas = results;
-//        datas.add(RecordEntity(isBlank: true));
-//      });
-//    });
-//    recordEntityProvider.close();
-  }
-
   @override
   void initState() {
     super.initState();
@@ -89,13 +76,14 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
-  void _toEditPage({RecordEntity data}) async {
+  void _toEditPage({RecordEntity data, String recordType}) async {
     RecordEntity result = await Navigator.push(
         context,
         MaterialPageRoute(
             builder: (context) => EditRecordPage(
-                  data: data,
-                )));
+              data: data,
+              recordType: recordType,
+            )));
     if (null != result) {
       for (RecordEntity e in datas) {
         if (e.recordId == result.recordId) {
@@ -136,103 +124,88 @@ class _MyHomePageState extends State<MyHomePage> {
           itemCount: datas.length,
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _toEditPage,
-        tooltip: 'Increment',
-        child: Icon(Icons.add),
+      floatingActionButton: PopupMenuButton<String>(
+          elevation: 10,
+          onSelected: ((value) {
+            if (value == 'TIME_JOURNEY') {
+              _toEditPage(recordType: TIME_JOURNEY);
+            } else if (value == 'TIME_RECORD') {
+              _toEditPage(recordType: TIME_RECORD);
+            }
+          }),
+          icon: Icon(Icons.add_circle_outline, size: 48, color: Colors.orange,),
+          padding: EdgeInsets.zero,
+//          onSelected: showMenuSelection,
+          itemBuilder: (BuildContext context) =>
+          <PopupMenuEntry<String>>[
+            const PopupMenuItem<String>(
+                value: TIME_RECORD,
+                child: ListTile(
+                    leading: Icon(Icons.visibility),
+                    title: Text('时光记录')
+                )
+            ),
+            const PopupMenuItem<String>(
+                value: TIME_JOURNEY,
+                child: ListTile(
+                    leading: Icon(Icons.person_add),
+                    title: Text('时间旅程')
+                )
+            ),
+
+            const PopupMenuItem<String>(
+                value: 'Remove',
+                child: ListTile(
+                    leading: Icon(Icons.delete),
+                    title: Text('Remove')
+                )
+            )
+          ]
       ), // This trailing comma makes auto-formatting nicer for build methods.
     );
   }
 
+
   ///倒计时
-  Widget _getCountDownItem(RecordEntity data) {
+  Widget _getTimeJourneyItem(RecordEntity data) {
     return GestureDetector(
-      onTap: () {
-        _toEditPage(data: data);
-      },
-      child: Padding(
-          padding: const EdgeInsets.only(left: 10, top: 10, right: 10),
-          child: Container(
-            height: 100,
-            decoration: BoxDecoration(
-                borderRadius: BorderRadius.all(Radius.circular(8)),
-                color: Colors.blue),
-            child: Column(
-              children: <Widget>[
-                Container(
-                    margin: EdgeInsets.only(top: 10),
-                    child: Text(data.comment, //备注文字
-                        maxLines: 1,
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 28,
-                          color: Colors.white,
-                        ))),
-                Container(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: <Widget>[
-                      Expanded(
-                          child: Text(
-                        DateTime.fromMillisecondsSinceEpoch(data.startDateTime)
-                            .toString()
-                            .substring(0, 16),
-                        style: TextStyle(color: Colors.white, fontSize: 14),
-                      )),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: <Widget>[
-                            Text(
-                              'xx天xx小时',
-                              style:
-                                  TextStyle(color: Colors.white, fontSize: 14),
-                            ),
-                            Divider(height: 1, color: Colors.white),
-                            Text(
-                              '已过去xxxx天xx小时',
-                              maxLines: 1,
-                              style:
-                                  TextStyle(color: Colors.white, fontSize: 14),
-                            )
-                          ],
-                        ),
+        onTap: () {
+          _toEditPage(data: data);
+        },
+        onLongPress: () {
+          showDialog(
+              context: context,
+              builder: (BuildContext context) =>
+                  CupertinoAlertDialog(
+                    title: const Text("是否删除此项目"),
+                    content: Text(data.comment),
+                    actions: <Widget>[
+                      CupertinoDialogAction(
+                        child: const Text('删除'),
+                        onPressed: () {
+                          setState(() {
+                            Navigator.pop(context, '已删除');
+                            datas.remove(data);
+                            RecordEntityProvider().open().then((db) {
+                              db.delete(data.recordId);
+                            });
+                          });
+                        },
                       ),
-                      Expanded(
-                          child: Text(
-                        DateTime.fromMillisecondsSinceEpoch(data.endDateTime)
-                            .toString()
-                            .substring(0, 16),
-                        style: TextStyle(color: Colors.white, fontSize: 14),
-                      )),
+                      CupertinoDialogAction(
+                        child: const Text('取消'),
+                        onPressed: () {
+                          Navigator.pop(context, '');
+                        },
+                      ),
                     ],
-                  ),
-                )
-              ],
-            ),
-          )),
+                  ));
+        },
+        child: Card(elevation: 10)
     );
   }
 
   Widget _getCommonItem(RecordEntity data) {
-//    String preStr = '';
-//    int nowTime = DateTime.now().millisecondsSinceEpoch;
-//    int recordTime = data.startDateTime;
-//    if (nowTime < recordTime) {
-//      preStr = '还有';
-//    } else {
-//      preStr = '已过去';
-//    }
-//    double timeInSeconds = (nowTime - recordTime).abs() / 1000;
-//    int day = (timeInSeconds / 86400).round();
-//    var countDateStr = '';
-//    if (data.hasSelectTime) {
-//      int hour = ((timeInSeconds % 86400) / 3600).round();
-//      countDateStr = '$day天$hour小时';
-//    } else {
-//      countDateStr = '$day天';
-//    }
-
     return GestureDetector(
       onTap: () {
         _toEditPage(data: data);
@@ -241,33 +214,32 @@ class _MyHomePageState extends State<MyHomePage> {
         showDialog(
             context: context,
             builder: (BuildContext context) => CupertinoAlertDialog(
-                  title: const Text("是否删除此项目"),
-                  content: Text(data.comment),
-                  actions: <Widget>[
-                    CupertinoDialogAction(
-                      child: const Text('删除'),
-                      onPressed: () {
-                        setState(() {
-                          Navigator.pop(context, '已删除');
-                          datas.remove(data);
-                          RecordEntityProvider().open().then((db) {
-                            db.delete(data.recordId);
-                          });
-                        });
-                      },
-                    ),
-                    CupertinoDialogAction(
-                      child: const Text('取消'),
-                      onPressed: () {
-                        Navigator.pop(context, '');
-                      },
-                    ),
-                  ],
-                ));
+              title: const Text("是否删除此项目"),
+              content: Text(data.comment),
+              actions: <Widget>[
+                CupertinoDialogAction(
+                  child: const Text('删除'),
+                  onPressed: () {
+                    setState(() {
+                      Navigator.pop(context, '已删除');
+                      datas.remove(data);
+                      RecordEntityProvider().open().then((db) {
+                        db.delete(data.recordId);
+                      });
+                    });
+                  },
+                ),
+                CupertinoDialogAction(
+                  child: const Text('取消'),
+                  onPressed: () {
+                    Navigator.pop(context, '');
+                  },
+                ),
+              ],
+            ));
       },
       child: Card(
-        margin: EdgeInsets.only(left: 10, top: 10, right: 10),
-        
+        margin: EdgeInsets.only(left: 8, top: 8, right: 8),
         elevation: 10,
         child: Row(
           //行0
@@ -279,8 +251,8 @@ class _MyHomePageState extends State<MyHomePage> {
                   decoration: BoxDecoration(
                       color: Color(0xee333333),
                       borderRadius: BorderRadiusDirectional.only(
-                          topStart: Radius.circular(8),
-                          bottomStart: Radius.circular(8))),
+                          topStart: Radius.circular(4),
+                          bottomStart: Radius.circular(4))),
                   child: Column(
                     //左边文字
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -312,8 +284,8 @@ class _MyHomePageState extends State<MyHomePage> {
                   decoration: BoxDecoration(
                       color: Colors.orange,
                       borderRadius: BorderRadius.only(
-                          bottomRight: Radius.circular(8),
-                          topRight: Radius.circular(8))),
+                          bottomRight: Radius.circular(4),
+                          topRight: Radius.circular(4))),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: _getRightText(data),
@@ -393,7 +365,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Widget _getLeftDateWidget(RecordEntity data) {
     String startDateStr =
-        DateTime.fromMillisecondsSinceEpoch(data.startDateTime).toString();
+    DateTime.fromMillisecondsSinceEpoch(data.startDateTime).toString();
     if (data.hasSelectTime) {
       startDateStr = startDateStr.substring(0, 16);
     } else {
@@ -403,7 +375,7 @@ class _MyHomePageState extends State<MyHomePage> {
       return _getDateItem('开始:$startDateStr');
     } else {
       String endDateStr =
-          DateTime.fromMillisecondsSinceEpoch(data.endDateTime).toString();
+      DateTime.fromMillisecondsSinceEpoch(data.endDateTime).toString();
       if (data.hasSelectTime) {
         endDateStr = endDateStr.substring(0, 16);
       } else {
@@ -434,7 +406,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Widget _getBlankItem() => Container(
-        height: 80,
-        child: Text(''),
-      );
+    height: 80,
+    child: Text(''),
+  );
 }

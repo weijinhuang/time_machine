@@ -8,6 +8,7 @@ final END_DATE_TIME = "endDateTime";
 final IMAGE = "image";
 final HAS_SELECT_TIME = "hasSelectTime";
 final TABLE_RECORD = "table_record";
+final RECORD_TYPE = "recordType";
 final DB_RECORD = "db_record.db";
 
 class RecordEntity {
@@ -18,7 +19,8 @@ class RecordEntity {
       this.endDateTime,
       this.image,
       this.isBlank,
-      this.hasSelectTime});
+        this.hasSelectTime,
+        this.recordType});
 
   int recordId;
   String comment = '';
@@ -27,13 +29,14 @@ class RecordEntity {
   int endDateTime = -1;
   String image;
   bool isBlank = false;
-
+  String recordType;
   Map<String, dynamic> toMap() {
     var map = <String, dynamic>{
       COMMENT: comment,
       START_DATE_TIME: startDateTime,
       END_DATE_TIME: endDateTime,
       IMAGE: image,
+      RECORD_TYPE: recordType
     };
     if (null == recordId ) {
       map[RECORD_ID] = recordId;
@@ -48,6 +51,7 @@ class RecordEntity {
     startDateTime = map[START_DATE_TIME];
     endDateTime = map[END_DATE_TIME];
     image = map[IMAGE];
+    recordType = map[RECORD_TYPE];
     hasSelectTime = map[HAS_SELECT_TIME]==1?true:false;
   }
 }
@@ -58,21 +62,14 @@ class RecordEntityProvider {
   Future<RecordEntityProvider> open() async {
     var databasePaht = await getDatabasesPath();
     String path = join(databasePaht, DB_RECORD);
-//    db = await openDatabase(path, version: 1,
-//        onCreate: (Database db, int version) async {
-//      await db.execute('''
-//        create table $TABLE_RECORD(
-//          $RECORD_ID integer primary key,
-//          $COMMENT text,
-//          $START_DATE_TIME integer,
-//          $END_DATE_TIME integer,
-//          $IMAGE text,
-//          $HAS_SELECT_TIME integer,
-//        )
-//        ''');
-//    });
     db = await openDatabase(path, version: 1,
-        onCreate: (Database db, int version) async {
+        onUpgrade: ((Database db, int oldVersion, int newVersion) {
+          if (newVersion == 2) {
+            db.execute(
+                ' alter table $TABLE_RECORD add column $RECORD_TYPE text');
+          }
+        }),
+        onCreate: (Database db, int version,) async {
       await db.execute('create table $TABLE_RECORD($RECORD_ID integer primary key autoincrement,$COMMENT text,$START_DATE_TIME integer,$END_DATE_TIME integer,$HAS_SELECT_TIME integer,$IMAGE text)');
     });
     return this;
