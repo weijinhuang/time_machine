@@ -55,6 +55,7 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   List<RecordEntity> datas = List();
+  GlobalKey floatButtonKey = GlobalKey();
 
   @override
   void initState() {
@@ -81,9 +82,9 @@ class _MyHomePageState extends State<MyHomePage> {
         context,
         MaterialPageRoute(
             builder: (context) => EditRecordPage(
-              data: data,
-              recordType: recordType,
-            )));
+                  data: data,
+                  recordType: recordType,
+                )));
     if (null != result) {
       for (RecordEntity e in datas) {
         if (e.recordId == result.recordId) {
@@ -124,49 +125,48 @@ class _MyHomePageState extends State<MyHomePage> {
           itemCount: datas.length,
         ),
       ),
-      floatingActionButton: PopupMenuButton<String>(
-          elevation: 10,
-          onSelected: ((value) {
-            if (value == 'TIME_JOURNEY') {
-              _toEditPage(recordType: TIME_JOURNEY);
-            } else if (value == 'TIME_RECORD') {
-              _toEditPage(recordType: TIME_RECORD);
-            }
-          }),
-          icon: Icon(Icons.add_circle_outline, size: 48, color: Colors.orange,),
-          padding: EdgeInsets.zero,
-//          onSelected: showMenuSelection,
-          itemBuilder: (BuildContext context) =>
-          <PopupMenuEntry<String>>[
-            const PopupMenuItem<String>(
-                value: TIME_RECORD,
-                child: ListTile(
-                    leading: Icon(Icons.visibility),
-                    title: Text('时光记录')
-                )
-            ),
-            const PopupMenuItem<String>(
-                value: TIME_JOURNEY,
-                child: ListTile(
-                    leading: Icon(Icons.person_add),
-                    title: Text('时间旅程')
-                )
-            ),
-
-            const PopupMenuItem<String>(
-                value: 'Remove',
-                child: ListTile(
-                    leading: Icon(Icons.delete),
-                    title: Text('Remove')
-                )
-            )
-          ]
-      ), // This trailing comma makes auto-formatting nicer for build methods.
+      floatingActionButton: FloatingActionButton(
+          backgroundColor: Colors.orange,
+          child: const Icon(Icons.add),
+          key: floatButtonKey,
+          onPressed: (() {
+            final RenderBox button =
+                floatButtonKey.currentContext.findRenderObject();
+            final RenderBox overlay =
+                Overlay.of(context).context.findRenderObject();
+            final RelativeRect position = RelativeRect.fromRect(
+              Rect.fromPoints(
+                button.localToGlobal(Offset.zero, ancestor: overlay),
+                button.localToGlobal(button.size.bottomRight(Offset.zero),
+                    ancestor: overlay),
+              ),
+              Offset.zero & overlay.size,
+            );
+            showMenu(context: context, position: position, items: [
+              const PopupMenuItem<String>(
+                  value: TIME_RECORD,
+                  child: ListTile(
+                      leading: Icon(Icons.visibility), title: Text('时光记录'))),
+              const PopupMenuItem<String>(
+                  value: TIME_JOURNEY,
+                  child: ListTile(
+                      leading: Icon(Icons.person_add), title: Text('时间旅程'))),
+            ]).then<void>((String newValue) {
+              if (!mounted) return null;
+              if (newValue == null) {
+                return null;
+              }
+              if (newValue == TIME_JOURNEY) {
+                _toEditPage(recordType: TIME_JOURNEY);
+              } else if (newValue == TIME_RECORD) {
+                _toEditPage(recordType: TIME_RECORD);
+              }
+            });
+          })),
     );
   }
 
-
-  ///倒计时
+  ///时间旅程
   Widget _getTimeJourneyItem(RecordEntity data) {
     return GestureDetector(
         onTap: () {
@@ -175,8 +175,7 @@ class _MyHomePageState extends State<MyHomePage> {
         onLongPress: () {
           showDialog(
               context: context,
-              builder: (BuildContext context) =>
-                  CupertinoAlertDialog(
+              builder: (BuildContext context) => CupertinoAlertDialog(
                     title: const Text("是否删除此项目"),
                     content: Text(data.comment),
                     actions: <Widget>[
@@ -201,8 +200,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     ],
                   ));
         },
-        child: Card(elevation: 10)
-    );
+        child: Card(elevation: 10));
   }
 
   Widget _getCommonItem(RecordEntity data) {
@@ -214,29 +212,29 @@ class _MyHomePageState extends State<MyHomePage> {
         showDialog(
             context: context,
             builder: (BuildContext context) => CupertinoAlertDialog(
-              title: const Text("是否删除此项目"),
-              content: Text(data.comment),
-              actions: <Widget>[
-                CupertinoDialogAction(
-                  child: const Text('删除'),
-                  onPressed: () {
-                    setState(() {
-                      Navigator.pop(context, '已删除');
-                      datas.remove(data);
-                      RecordEntityProvider().open().then((db) {
-                        db.delete(data.recordId);
-                      });
-                    });
-                  },
-                ),
-                CupertinoDialogAction(
-                  child: const Text('取消'),
-                  onPressed: () {
-                    Navigator.pop(context, '');
-                  },
-                ),
-              ],
-            ));
+                  title: const Text("是否删除此项目"),
+                  content: Text(data.comment),
+                  actions: <Widget>[
+                    CupertinoDialogAction(
+                      child: const Text('删除'),
+                      onPressed: () {
+                        setState(() {
+                          Navigator.pop(context, '已删除');
+                          datas.remove(data);
+                          RecordEntityProvider().open().then((db) {
+                            db.delete(data.recordId);
+                          });
+                        });
+                      },
+                    ),
+                    CupertinoDialogAction(
+                      child: const Text('取消'),
+                      onPressed: () {
+                        Navigator.pop(context, '');
+                      },
+                    ),
+                  ],
+                ));
       },
       child: Card(
         margin: EdgeInsets.only(left: 8, top: 8, right: 8),
@@ -365,7 +363,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Widget _getLeftDateWidget(RecordEntity data) {
     String startDateStr =
-    DateTime.fromMillisecondsSinceEpoch(data.startDateTime).toString();
+        DateTime.fromMillisecondsSinceEpoch(data.startDateTime).toString();
     if (data.hasSelectTime) {
       startDateStr = startDateStr.substring(0, 16);
     } else {
@@ -375,7 +373,7 @@ class _MyHomePageState extends State<MyHomePage> {
       return _getDateItem('开始:$startDateStr');
     } else {
       String endDateStr =
-      DateTime.fromMillisecondsSinceEpoch(data.endDateTime).toString();
+          DateTime.fromMillisecondsSinceEpoch(data.endDateTime).toString();
       if (data.hasSelectTime) {
         endDateStr = endDateStr.substring(0, 16);
       } else {
@@ -406,7 +404,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Widget _getBlankItem() => Container(
-    height: 80,
-    child: Text(''),
-  );
+        height: 80,
+        child: Text(''),
+      );
 }

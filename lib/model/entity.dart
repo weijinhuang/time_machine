@@ -19,7 +19,6 @@ class RecordEntity {
       this.endDateTime,
       this.image,
       this.isBlank,
-        this.hasSelectTime,
         this.recordType});
 
   int recordId;
@@ -62,7 +61,7 @@ class RecordEntityProvider {
   Future<RecordEntityProvider> open() async {
     var databasePaht = await getDatabasesPath();
     String path = join(databasePaht, DB_RECORD);
-    db = await openDatabase(path, version: 1,
+    db = await openDatabase(path, version: 2,
         onUpgrade: ((Database db, int oldVersion, int newVersion) {
           if (newVersion == 2) {
             db.execute(

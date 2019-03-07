@@ -1,12 +1,16 @@
+import 'dart:io';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import 'main.dart';
 import 'model/entity.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:flutter/services.dart' show rootBundle;
+import 'package:permission_handler/permission_handler.dart';
 
 const double _kPickerSheetHeight = 216.0;
-const double _kPickerItemHeight = 32.0;
 
 class EditRecordPage extends StatefulWidget {
   EditRecordPage({this.data, this.recordType = TIME_RECORD});
@@ -21,12 +25,12 @@ class EditRecordPage extends StatefulWidget {
 class _EditRecordState extends State<EditRecordPage> {
   DateTime startDate;
 
-  DateTime startTime;
   DateTime endDate;
 
-  DateTime endTime;
   RecordEntity data;
   String inputText;
+
+  File _image;
 
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
@@ -34,14 +38,8 @@ class _EditRecordState extends State<EditRecordPage> {
     this.data = data;
     if (null != data) {
       startDate = DateTime.fromMillisecondsSinceEpoch(data.startDateTime);
-      if (data.hasSelectTime) {
-        startTime = DateTime.fromMillisecondsSinceEpoch(data.startDateTime);
-      }
       if (data.endDateTime != null && data.endDateTime > 0) {
         endDate = DateTime.fromMillisecondsSinceEpoch(data.endDateTime);
-        if (data.hasSelectTime) {
-          endTime = DateTime.fromMillisecondsSinceEpoch(data.endDateTime);
-        }
       }
     }
   }
@@ -77,25 +75,9 @@ class _EditRecordState extends State<EditRecordPage> {
       if (null == data) {
         data = RecordEntity();
       }
-      if (startTime == null) {
-        data.hasSelectTime = false;
-        data.startDateTime = startDate.millisecondsSinceEpoch;
-      } else {
-        data.hasSelectTime = true;
-        data.startDateTime = DateTime(startDate.year, startDate.month,
-                startDate.day, startTime.hour, startTime.minute)
-            .millisecondsSinceEpoch;
-      }
+      data.startDateTime = startDate.millisecondsSinceEpoch;
       if (endDate != null) {
-        if (endTime == null) {
-          data.hasSelectTime = false;
-          data.endDateTime = endDate.millisecondsSinceEpoch;
-        } else {
-          data.hasSelectTime = true;
-          data.endDateTime = DateTime(endDate.year, endDate.month, endDate.day,
-                  endTime.hour, endTime.minute)
-              .millisecondsSinceEpoch;
-        }
+        data.endDateTime = endDate.millisecondsSinceEpoch;
       }
       data.comment = inputText;
       data.isBlank = false;
@@ -130,61 +112,152 @@ class _EditRecordState extends State<EditRecordPage> {
         ],
       ),
       body: ListView(
-        children: <Widget>[
-          Container(
-            color: Color(0x00000000),
-            height: 10,
-          ),
-          _buildStartTimePicker(
-              context, "开始日期", CupertinoDatePickerMode.date, startDate,
-              (selectDateTime) {
-            setState(() => startDate = selectDateTime);
-          }, '请选择开始日期'),
-          _buildStartTimePicker(
-              context, "开始时间", CupertinoDatePickerMode.time, startTime,
-              (selectDateTime) {
-            setState(() => startTime = selectDateTime);
-          }, '(可选)如不选择，则只计算天数'),
-          Container(
-            color: Color(0xEEEEEEEE),
-            height: 10,
-          ),
-          _buildStartTimePicker(
-              context, "结束日期", CupertinoDatePickerMode.date, endDate,
-              (selectDateTime) {
-            setState(() => endDate = selectDateTime);
-          }, '(可选)请选择结束日期'),
-          _buildStartTimePicker(
-              context, "结束时间", CupertinoDatePickerMode.time, endTime,
-              (selectDateTime) {
-            setState(() => endTime = selectDateTime);
-          }, '(可选)请选择结束时间'),
-          Container(
-            margin: EdgeInsets.only(left: 10, top: 20, right: 10, bottom: 20),
-            child: Form(
-              key: _formKey,
-              child: TextFormField(
-                initialValue: inputText,
-                autovalidate: true,
-                decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
-                  helperText: '这一天发生了什么',
-                  labelText: '备注',
-                ),
-                maxLines: 3,
-                onSaved: (saved) => inputText = saved,
-                validator: (str) {
-                  if (str.isEmpty) {
-                    return '请填写备注';
-                  }
-                  return null;
-                },
-              ),
-            ),
-          ),
-        ],
+        children: _getListItem(),
       ),
     );
+  }
+
+  List<Widget> _getListItem() {
+    List<Widget> list = List();
+    list.add(Container(
+      color: Color(0xEEEEEEEE),
+      height: 10,
+    ));
+    list.add(_buildStartTimePicker(
+        context, "From:", CupertinoDatePickerMode.date, startDate,
+        (selectDateTime) {
+      setState(() => startDate = selectDateTime);
+    }, '请选择日期'));
+    list.add(Container(
+      color: Color(0xEEEEEEEE),
+      height: 10,
+    ));
+    if (widget.recordType == TIME_JOURNEY) {
+      list.add(_buildStartTimePicker(
+          context, "To:", CupertinoDatePickerMode.date, endDate,
+          (selectDateTime) {
+        setState(() => endDate = selectDateTime);
+      }, '请选择日期'));
+      list.add(Container(
+        color: Color(0xEEEEEEEE),
+        height: 10,
+      ));
+    }
+    if (null != _image) {
+      list.add(GestureDetector(
+        onTap: _selePicture,
+        child: Image.file(
+          _image,
+          width: 150,
+          height: 150,
+        ),
+      ));
+    } else {
+      list.add(GestureDetector(
+        onTap: _selePicture,
+        child: Image.asset(
+          "images/icon_camera.png",
+          width: 150,
+          height: 150,
+        ),
+      ));
+    }
+    list.add(Container(
+      margin: EdgeInsets.only(left: 10, top: 20, right: 10, bottom: 20),
+      child: Form(
+        key: _formKey,
+        child: TextFormField(
+          initialValue: inputText,
+          autovalidate: true,
+          decoration: const InputDecoration(
+            border: OutlineInputBorder(),
+            helperText: '这一天发生了什么',
+            labelText: '备注',
+          ),
+          maxLines: 3,
+          onSaved: (saved) => inputText = saved,
+          validator: (str) {
+            if (str.isEmpty) {
+              return '请填写备注';
+            }
+            return null;
+          },
+        ),
+      ),
+    ));
+    return list;
+  }
+
+  void _selePicture() {
+    showDemoActionSheet(
+      context: context,
+      child: CupertinoActionSheet(
+          title: const Text(
+            '添加时光照片',
+            style: TextStyle(fontSize: 20),
+          ),
+          actions: <Widget>[
+            CupertinoActionSheetAction(
+              child: const Text('从相册选择'),
+              onPressed: () {
+                getImage(ImageSource.gallery);
+              },
+            ),
+            CupertinoActionSheetAction(
+              child: const Text('拍照'),
+              onPressed: () {
+                getImage(ImageSource.camera);
+              },
+            ),
+          ],
+          cancelButton: CupertinoActionSheetAction(
+            child: const Text('取消'),
+            isDefaultAction: true,
+            onPressed: () {
+              Navigator.pop(context, '');
+            },
+          )),
+    );
+  }
+
+  Future getImage(ImageSource source) async {
+    var permission;
+    if (source == ImageSource.gallery) {
+      permission =  PermissionGroup.storage ;
+    } else {
+      permission =  PermissionGroup.camera ;
+    }
+    var permissionStatus =
+        await PermissionHandler().checkPermissionStatus(permission);
+    if (permissionStatus != PermissionStatus.granted) {
+      Navigator.pop(context, '');
+      final List<PermissionGroup> permissionList = <PermissionGroup>[permission];
+      Map<PermissionGroup, PermissionStatus> result =
+          await PermissionHandler().requestPermissions(permissionList);
+
+      if (result[permission] == PermissionStatus.granted) {
+        var image = await ImagePicker.pickImage(source: source);
+        setState(() {
+          _image = image;
+        });
+      }
+    } else {
+      var image = await ImagePicker.pickImage(source: source);
+      setState(() {
+        _image = image;
+      });
+    }
+  }
+
+  Future<bool> checkPermission(ImageSource source) async {}
+
+  void showDemoActionSheet({BuildContext context, Widget child}) {
+    showCupertinoModalPopup<String>(
+      context: context,
+      builder: (BuildContext context) => child,
+    ).then((String value) {
+      if (value != null) {}
+    });
   }
 
   Widget _buildStartTimePicker(
@@ -207,21 +280,7 @@ class _EditRecordState extends State<EditRecordPage> {
     }
     return GestureDetector(
       onTap: () {
-        showCupertinoModalPopup<void>(
-          context: context,
-          builder: (BuildContext context) {
-            return _buildBottomPicker(
-              CupertinoDatePicker(
-                mode: mode,
-                initialDateTime: initialDateTime,
-                use24hFormat: true,
-                onDateTimeChanged: (DateTime newDateTime) {
-                  onDateTimeChange(newDateTime);
-                },
-              ),
-            );
-          },
-        );
+        _selectDate(context, initialDateTime, onDateTimeChange);
       },
       child: _buildMenu(
         <Widget>[
@@ -235,26 +294,14 @@ class _EditRecordState extends State<EditRecordPage> {
     );
   }
 
-  Widget _buildBottomPicker(Widget picker) {
-    return Container(
-      height: _kPickerSheetHeight,
-      padding: const EdgeInsets.only(top: 6.0),
-      color: CupertinoColors.white,
-      child: DefaultTextStyle(
-        style: const TextStyle(
-          color: CupertinoColors.black,
-          fontSize: 22.0,
-        ),
-        child: GestureDetector(
-          // Blocks taps from propagating to the modal sheet and popping.
-          onTap: () {},
-          child: SafeArea(
-            top: false,
-            child: picker,
-          ),
-        ),
-      ),
-    );
+  Future<void> _selectDate(BuildContext context, DateTime initialDateTime,
+      Function onDateTimeChange) async {
+    final DateTime picked = await showDatePicker(
+        context: context,
+        initialDate: initialDateTime,
+        firstDate: DateTime(1970, 1),
+        lastDate: DateTime(2100));
+    if (picked != null) onDateTimeChange(picked);
   }
 
   Widget _buildMenu(List<Widget> children) {
