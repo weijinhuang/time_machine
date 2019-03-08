@@ -28,11 +28,13 @@ class _EditRecordState extends State<EditRecordPage> {
   DateTime endDate;
 
   RecordEntity data;
-  String inputText;
+  String _commentText;
+  String _titleText;
 
   File _image;
 
-  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  final GlobalKey<FormState> _commentFormKey = GlobalKey<FormState>();
+  final GlobalKey<FormState> _titleFormKey = GlobalKey<FormState>();
 
   _EditRecordState(RecordEntity data) {
     this.data = data;
@@ -45,14 +47,16 @@ class _EditRecordState extends State<EditRecordPage> {
   }
 
   void _onFinish(BuildContext context) {
-    FormState formState = _formKey.currentState;
-    if (null == startDate || !formState.validate()) {
+    FormState commentFormState = _commentFormKey.currentState;
+    FormState titleFormState = _titleFormKey.currentState;
+
+    if (null == startDate || !commentFormState.validate()) {
       String tips;
       if (null == startDate) {
         tips = "请选择开始日期";
       }
-      if (!formState.validate()) {
-        tips = "请填写备注";
+      if (!commentFormState.validate() || !titleFormState.validate()) {
+        tips = "请填写备注或标题";
       }
       showDialog(
         context: context,
@@ -71,7 +75,8 @@ class _EditRecordState extends State<EditRecordPage> {
             ),
       );
     } else {
-      formState.save();
+      commentFormState.save();
+      titleFormState.save();
       if (null == data) {
         data = RecordEntity();
       }
@@ -79,7 +84,8 @@ class _EditRecordState extends State<EditRecordPage> {
       if (endDate != null) {
         data.endDateTime = endDate.millisecondsSinceEpoch;
       }
-      data.comment = inputText;
+      data.comment = _commentText;
+      data.comment = _titleText;
       data.isBlank = false;
       Navigator.pop(context, data);
     }
@@ -88,9 +94,14 @@ class _EditRecordState extends State<EditRecordPage> {
   @override
   Widget build(BuildContext context) {
     if (null != data && null != data.comment) {
-      inputText = data.comment;
+      _commentText = data.comment;
     } else {
-      inputText = '';
+      _commentText = '';
+    }
+    if (null != data && null != data.title) {
+      _titleText = data.title;
+    } else {
+      _titleText = '';
     }
     return Scaffold(
       appBar: AppBar(
@@ -150,6 +161,7 @@ class _EditRecordState extends State<EditRecordPage> {
           _image,
           width: 150,
           height: 150,
+          fit: BoxFit.none,
         ),
       ));
     } else {
@@ -165,9 +177,25 @@ class _EditRecordState extends State<EditRecordPage> {
     list.add(Container(
       margin: EdgeInsets.only(left: 10, top: 20, right: 10, bottom: 20),
       child: Form(
-        key: _formKey,
+        key: _titleFormKey,
         child: TextFormField(
-          initialValue: inputText,
+          initialValue: _titleText,
+          autovalidate: true,
+          decoration: const InputDecoration(
+            border: OutlineInputBorder(),
+            labelText: '标题',
+          ),
+          maxLines: 1,
+          onSaved: (saved) => _titleText = saved,
+        ),
+      ),
+    ));
+    list.add(Container(
+      margin: EdgeInsets.only(left: 10, top: 10, right: 10, bottom: 20),
+      child: Form(
+        key: _commentFormKey,
+        child: TextFormField(
+          initialValue: _commentText,
           autovalidate: true,
           decoration: const InputDecoration(
             border: OutlineInputBorder(),
@@ -175,7 +203,7 @@ class _EditRecordState extends State<EditRecordPage> {
             labelText: '备注',
           ),
           maxLines: 3,
-          onSaved: (saved) => inputText = saved,
+          onSaved: (saved) => _commentText = saved,
           validator: (str) {
             if (str.isEmpty) {
               return '请填写备注';
@@ -223,15 +251,17 @@ class _EditRecordState extends State<EditRecordPage> {
   Future getImage(ImageSource source) async {
     var permission;
     if (source == ImageSource.gallery) {
-      permission =  PermissionGroup.storage ;
+      permission = PermissionGroup.storage;
     } else {
-      permission =  PermissionGroup.camera ;
+      permission = PermissionGroup.camera;
     }
     var permissionStatus =
         await PermissionHandler().checkPermissionStatus(permission);
     if (permissionStatus != PermissionStatus.granted) {
       Navigator.pop(context, '');
-      final List<PermissionGroup> permissionList = <PermissionGroup>[permission];
+      final List<PermissionGroup> permissionList = <PermissionGroup>[
+        permission
+      ];
       Map<PermissionGroup, PermissionStatus> result =
           await PermissionHandler().requestPermissions(permissionList);
 

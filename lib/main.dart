@@ -1,7 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:time_machine/EditRecordPage.dart';
-
+import 'dart:io';
 import 'model/entity.dart';
 
 void main() => runApp(MyApp());
@@ -56,6 +56,7 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   List<RecordEntity> datas = List();
   GlobalKey floatButtonKey = GlobalKey();
+  double screenWidth;
 
   @override
   void initState() {
@@ -107,6 +108,8 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {
+    var of = MediaQuery.of(context);
+    screenWidth = of.size.width;
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.title),
@@ -117,7 +120,7 @@ class _MyHomePageState extends State<MyHomePage> {
           itemBuilder: (context, index) {
             var data = datas[index];
             if (!data.isBlank) {
-              return _getCommonItem(data);
+              return _getCommonItem1(data);
             } else {
               return _getBlankItem();
             }
@@ -201,6 +204,71 @@ class _MyHomePageState extends State<MyHomePage> {
                   ));
         },
         child: Card(elevation: 10));
+  }
+
+  Widget _getCommonItem1(RecordEntity data) {
+    return GestureDetector(
+      onTap: () {},
+      child: Card(
+        elevation: 10,
+        child: Column(
+          children: _getChildren(data),
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _getChildren(RecordEntity data) {
+    List<Widget> list = List();
+    if (data.image != null && data.image != '') {
+      Image image = Image.file(
+        File(data.image),
+        width: screenWidth - 50,
+        height: (screenWidth - 50) * 2 / 3,
+        fit: BoxFit.cover,
+      );
+      list.add(image);
+    }
+    if(null != data.title && data.title.isNotEmpty) {
+      Text title =
+      Text(data.title, style: TextStyle(color: Colors.black87, fontSize: 14));
+      list.add(title);
+    }
+    if(null != data.comment && data.comment.isNotEmpty) {
+      Text content = Text(data.comment,
+          style: TextStyle(color: Colors.black38, fontSize: 12));
+      list.add(content);
+    }
+    Widget getStartTimeItem(String str) {
+      return Text(
+        str,
+        style: TextStyle(color: Colors.black45, fontSize: 12),
+      );
+    }
+
+    if (null !=data.endDateTime && data.endDateTime > 0) {
+      list.add(Row(
+        children: <Widget>[
+          getStartTimeItem(
+              DateTime.fromMillisecondsSinceEpoch(data.startDateTime)
+                  .toString()
+                  .substring(0, 10)),
+          Text(
+            '——>',
+            style: TextStyle(color: Colors.black45, fontSize: 12),
+          ),
+          getStartTimeItem(DateTime.fromMillisecondsSinceEpoch(data.endDateTime)
+              .toString()
+              .substring(0, 10))
+        ],
+      ));
+    } else {
+      list.add(getStartTimeItem(
+          DateTime.fromMillisecondsSinceEpoch(data.startDateTime)
+              .toString()
+              .substring(0, 10)));
+    }
+    return list;
   }
 
   Widget _getCommonItem(RecordEntity data) {
