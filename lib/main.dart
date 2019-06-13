@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:time_machine/EditRecordPage.dart';
 import 'dart:io';
 import 'model/entity.dart';
+import 'test.dart';
 
 void main() => runApp(MyApp());
 
@@ -113,19 +114,40 @@ class _MyHomePageState extends State<MyHomePage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.title),
+        actions: <Widget>[
+          Center(
+            heightFactor: 1,
+            child: GestureDetector(
+              onTap: () {
+                Navigator.push(context,
+                    MaterialPageRoute(builder: (context) => TestPage()));
+              },
+              child: Padding(
+                padding: const EdgeInsets.only(
+                    left: 0, top: 0, right: 10, bottom: 0),
+                child: Text(
+                  "Test",
+                  style: TextStyle(fontSize: 16),
+                ),
+              ),
+            ),
+          )
+        ],
       ),
-      body: Container(
-        color: Colors.transparent,
-        child: ListView.builder(
-          itemBuilder: (context, index) {
-            var data = datas[index];
-            if (!data.isBlank) {
+      body: SafeArea(
+        child: Container(
+          color: Colors.transparent,
+          child: ListView.builder(
+            itemBuilder: (context, index) {
+              var data = datas[index];
+//            if (!data.isBlank) {
               return _getCommonItem1(data);
-            } else {
-              return _getBlankItem();
-            }
-          },
-          itemCount: datas.length,
+//            } else {
+//            return _getBlankItem();
+//            }
+            },
+            itemCount: datas.length,
+          ),
         ),
       ),
       floatingActionButton: FloatingActionButton(
@@ -206,20 +228,13 @@ class _MyHomePageState extends State<MyHomePage> {
         child: Card(elevation: 10));
   }
 
-  Widget _getCommonItem1(RecordEntity data) {
-    return GestureDetector(
-      onTap: () {},
-      child: Card(
-        elevation: 10,
-        child: Column(
-          children: _getChildren(data),
-        ),
-      ),
-    );
-  }
-
   List<Widget> _getChildren(RecordEntity data) {
     List<Widget> list = List();
+    ThemeData theme = Theme.of(context);
+    TextStyle titleTextStyle =
+        theme.textTheme.title.copyWith(color: Color.fromARGB(0xff, 0x55, 0x55, 0x55));
+    TextStyle contentTextStyle =
+        theme.textTheme.body2;
     if (data.image != null && data.image != '') {
       Image image = Image.file(
         File(data.image),
@@ -229,34 +244,35 @@ class _MyHomePageState extends State<MyHomePage> {
       );
       list.add(image);
     }
-    if(null != data.title && data.title.isNotEmpty) {
-      Text title =
-      Text(data.title, style: TextStyle(color: Colors.black87, fontSize: 14));
-      list.add(title);
-    }
-    if(null != data.comment && data.comment.isNotEmpty) {
-      Text content = Text(data.comment,
-          style: TextStyle(color: Colors.black38, fontSize: 12));
-      list.add(content);
-    }
-    Widget getStartTimeItem(String str) {
-      return Text(
-        str,
-        style: TextStyle(color: Colors.black45, fontSize: 12),
+    if (null != data.title && data.title.isNotEmpty) {
+      Text title = Text(
+        data.title,
+        textAlign: TextAlign.left,
+        style: titleTextStyle,
       );
+      Padding padding = Padding(padding: EdgeInsets.all(8), child: title);
+      list.add(padding);
     }
+    if (null != data.comment && data.comment.isNotEmpty) {
+      Text content = Text(data.comment, style: contentTextStyle);
+      Padding padding = Padding(padding: EdgeInsets.all(8), child: content);
+      list.add(padding);
+    }
+    Widget getStartTimeItem(String str) => Padding(
+        padding: EdgeInsets.only(left: 8, bottom: 8),
+        child: Text(
+          str,
+          style: TextStyle(color: Colors.black45, fontSize: 12),
+        ));
 
-    if (null !=data.endDateTime && data.endDateTime > 0) {
+    if (null != data.endDateTime && data.endDateTime > 0) {
       list.add(Row(
         children: <Widget>[
           getStartTimeItem(
               DateTime.fromMillisecondsSinceEpoch(data.startDateTime)
                   .toString()
                   .substring(0, 10)),
-          Text(
-            '——>',
-            style: TextStyle(color: Colors.black45, fontSize: 12),
-          ),
+          getStartTimeItem("—>"),
           getStartTimeItem(DateTime.fromMillisecondsSinceEpoch(data.endDateTime)
               .toString()
               .substring(0, 10))
@@ -269,6 +285,25 @@ class _MyHomePageState extends State<MyHomePage> {
               .substring(0, 10)));
     }
     return list;
+  }
+
+  Widget _getCommonItem1(RecordEntity data) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 8,top: 8,right: 8),
+      child: GestureDetector(
+        onTap: () {
+          _toEditPage(data: data);
+        },
+        child: Card(
+          elevation: 10,
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            children: _getChildren(data),
+            crossAxisAlignment: CrossAxisAlignment.start,
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _getCommonItem(RecordEntity data) {
@@ -377,12 +412,7 @@ class _MyHomePageState extends State<MyHomePage> {
       double timeInSeconds = (nowTime - recordStartTime).abs() / 1000;
       int day = (timeInSeconds / 86400).round();
       var countDateStr = '';
-      if (data.hasSelectTime) {
-        int hour = ((timeInSeconds % 86400) / 3600).round();
-        countDateStr = '$day天$hour小时';
-      } else {
-        countDateStr = '$day天';
-      }
+      countDateStr = '$day天';
       Text text1Pre = Text(
         preStr1,
         style: TextStyle(color: Colors.white, fontSize: 14),
@@ -404,12 +434,7 @@ class _MyHomePageState extends State<MyHomePage> {
       double timeInSeconds2 = (nowTime - data.endDateTime).abs() / 1000;
       int day = (timeInSeconds2 / 86400).round();
       String countDateStr2 = '';
-      if (data.hasSelectTime) {
-        int hour = ((timeInSeconds2 % 86400) / 3600).round();
-        countDateStr2 = '$day天$hour小时';
-      } else {
-        countDateStr2 = '$day天';
-      }
+      countDateStr2 = '$day天';
       Text text2Pre = Text(
         pre2,
         style: TextStyle(color: Colors.white, fontSize: 14),
@@ -432,21 +457,13 @@ class _MyHomePageState extends State<MyHomePage> {
   Widget _getLeftDateWidget(RecordEntity data) {
     String startDateStr =
         DateTime.fromMillisecondsSinceEpoch(data.startDateTime).toString();
-    if (data.hasSelectTime) {
-      startDateStr = startDateStr.substring(0, 16);
-    } else {
-      startDateStr = startDateStr.substring(0, 10);
-    }
+    startDateStr = startDateStr.substring(0, 10);
     if (data.endDateTime == null || data.endDateTime < 0) {
       return _getDateItem('开始:$startDateStr');
     } else {
       String endDateStr =
           DateTime.fromMillisecondsSinceEpoch(data.endDateTime).toString();
-      if (data.hasSelectTime) {
-        endDateStr = endDateStr.substring(0, 16);
-      } else {
-        endDateStr = endDateStr.substring(0, 10);
-      }
+      endDateStr = endDateStr.substring(0, 10);
       return Column(
         children: <Widget>[
           _getDateItem('开始:$startDateStr'),

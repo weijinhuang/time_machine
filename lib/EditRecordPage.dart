@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/cupertino.dart';
@@ -7,8 +8,11 @@ import 'package:intl/intl.dart';
 import 'main.dart';
 import 'model/entity.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:flutter/services.dart' show rootBundle;
+import 'package:path_provider/path_provider.dart';
+
 import 'package:permission_handler/permission_handler.dart';
+
+import 'package:flutter/services.dart' show rootBundle;
 
 const double _kPickerSheetHeight = 216.0;
 
@@ -85,8 +89,7 @@ class _EditRecordState extends State<EditRecordPage> {
         data.endDateTime = endDate.millisecondsSinceEpoch;
       }
       data.comment = _commentText;
-      data.comment = _titleText;
-      data.isBlank = false;
+      data.title = _titleText;
       Navigator.pop(context, data);
     }
   }
@@ -154,26 +157,7 @@ class _EditRecordState extends State<EditRecordPage> {
         height: 10,
       ));
     }
-    if (null != _image) {
-      list.add(GestureDetector(
-        onTap: _selePicture,
-        child: Image.file(
-          _image,
-          width: 150,
-          height: 150,
-          fit: BoxFit.none,
-        ),
-      ));
-    } else {
-      list.add(GestureDetector(
-        onTap: _selePicture,
-        child: Image.asset(
-          "images/icon_camera.png",
-          width: 150,
-          height: 150,
-        ),
-      ));
-    }
+
     list.add(Container(
       margin: EdgeInsets.only(left: 10, top: 20, right: 10, bottom: 20),
       child: Form(
@@ -213,6 +197,30 @@ class _EditRecordState extends State<EditRecordPage> {
         ),
       ),
     ));
+    if (null != _image) {
+      list.add(GestureDetector(
+        onTap: _selePicture,
+        child: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Image.file(
+            _image,
+            width: 150,
+            height: 250,
+            fit: BoxFit.cover,
+          ),
+        ),
+      ));
+    } else {
+      list.add(GestureDetector(
+        onTap: _selePicture,
+        child: Image.asset(
+          "images/icon_camera.png",
+          width: 50,
+          height: 50,
+          fit: BoxFit.contain,
+        ),
+      ));
+    }
     return list;
   }
 
@@ -248,38 +256,36 @@ class _EditRecordState extends State<EditRecordPage> {
     );
   }
 
-  Future getImage(ImageSource source) async {
+  getImage(ImageSource source) async {
+    Navigator.pop(context, '');
     var permission;
     if (source == ImageSource.gallery) {
       permission = PermissionGroup.storage;
     } else {
       permission = PermissionGroup.camera;
     }
-    var permissionStatus =
+    PermissionStatus permissionStatus =
         await PermissionHandler().checkPermissionStatus(permission);
     if (permissionStatus != PermissionStatus.granted) {
-      Navigator.pop(context, '');
-      final List<PermissionGroup> permissionList = <PermissionGroup>[
-        permission
-      ];
-      Map<PermissionGroup, PermissionStatus> result =
-          await PermissionHandler().requestPermissions(permissionList);
-
-      if (result[permission] == PermissionStatus.granted) {
+      Map<PermissionGroup, PermissionStatus> res =
+          await PermissionHandler().requestPermissions([permission]);
+      if (res[permission] == PermissionStatus.granted) {
         var image = await ImagePicker.pickImage(source: source);
         setState(() {
           _image = image;
+          saveImage(image);
         });
       }
     } else {
       var image = await ImagePicker.pickImage(source: source);
       setState(() {
         _image = image;
+        saveImage(image);
       });
     }
   }
 
-  Future<bool> checkPermission(ImageSource source) async {}
+  checkPermission(ImageSource source) async {}
 
   void showDemoActionSheet({BuildContext context, Widget child}) {
     showCupertinoModalPopup<String>(
@@ -337,7 +343,7 @@ class _EditRecordState extends State<EditRecordPage> {
   Widget _buildMenu(List<Widget> children) {
     return Container(
       decoration: const BoxDecoration(
-        color: CupertinoColors.white,
+//        color: CupertinoColors.white,
         border: Border(
           bottom: BorderSide(color: Color(0xFFBCBBC1), width: 0.0),
         ),
@@ -362,5 +368,15 @@ class _EditRecordState extends State<EditRecordPage> {
         ),
       ),
     );
+  }
+
+  void saveImage(File image) async{
+    int lastIndex = image.path.lastIndexOf("/");
+    String imageName = image.path.substring(lastIndex);
+    print("path "+imageName);
+    String tempPath = (await getApplicationDocumentsDirectory()).path;
+    String imageFullName = tempPath+imageName;
+    File imageFile  = new File(imageFullName);
+    var openRead = image.openRead();
   }
 }
