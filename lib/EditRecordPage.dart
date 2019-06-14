@@ -11,6 +11,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'package:permission_handler/permission_handler.dart';
+import 'dart:convert';
 
 import 'package:flutter/services.dart' show rootBundle;
 
@@ -35,7 +36,7 @@ class _EditRecordState extends State<EditRecordPage> {
   String _commentText;
   String _titleText;
 
-  File _image;
+  String _image;
 
   final GlobalKey<FormState> _commentFormKey = GlobalKey<FormState>();
   final GlobalKey<FormState> _titleFormKey = GlobalKey<FormState>();
@@ -90,6 +91,8 @@ class _EditRecordState extends State<EditRecordPage> {
       }
       data.comment = _commentText;
       data.title = _titleText;
+      data.image = _image;
+      saveImage(_image);
       Navigator.pop(context, data);
     }
   }
@@ -197,13 +200,13 @@ class _EditRecordState extends State<EditRecordPage> {
         ),
       ),
     ));
-    if (null != _image) {
+    if (null != data && null !=data.image && data.image.isNotEmpty) {
       list.add(GestureDetector(
         onTap: _selePicture,
         child: Padding(
           padding: const EdgeInsets.all(8.0),
           child: Image.file(
-            _image,
+            new File(data.image),
             width: 150,
             height: 250,
             fit: BoxFit.cover,
@@ -272,15 +275,13 @@ class _EditRecordState extends State<EditRecordPage> {
       if (res[permission] == PermissionStatus.granted) {
         var image = await ImagePicker.pickImage(source: source);
         setState(() {
-          _image = image;
-          saveImage(image);
+          _image = image.path;
         });
       }
     } else {
       var image = await ImagePicker.pickImage(source: source);
       setState(() {
-        _image = image;
-        saveImage(image);
+        _image = image.path;
       });
     }
   }
@@ -370,13 +371,16 @@ class _EditRecordState extends State<EditRecordPage> {
     );
   }
 
-  void saveImage(File image) async{
-    int lastIndex = image.path.lastIndexOf("/");
-    String imageName = image.path.substring(lastIndex);
-    print("path "+imageName);
+  void saveImage(String image) async {
+    int lastIndex = image.lastIndexOf("/");
+    String imageName = image.substring(lastIndex);
+    print("path " + imageName);
     String tempPath = (await getApplicationDocumentsDirectory()).path;
-    String imageFullName = tempPath+imageName;
-    File imageFile  = new File(imageFullName);
-    var openRead = image.openRead();
+    String imageFullName = tempPath + imageName;
+    File imageFile = new File(imageFullName);
+    if (imageFile.existsSync()) {
+      imageFile.deleteSync();
+    }
+    new File(image).copy(imageFullName);
   }
 }

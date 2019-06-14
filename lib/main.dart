@@ -238,7 +238,7 @@ class _MyHomePageState extends State<MyHomePage> {
     if (data.image != null && data.image != '') {
       Image image = Image.file(
         File(data.image),
-        width: screenWidth - 50,
+
         height: (screenWidth - 50) * 2 / 3,
         fit: BoxFit.cover,
       );
